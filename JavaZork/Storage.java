@@ -1,9 +1,9 @@
 import java.util.ArrayList;
 import java.io.Serializable;
 
-public abstract class Storage {
+public abstract class Storage<T extends Item> implements SharedUses, Serializable {
     protected String name;
-    protected ArrayList<Item> items;
+    protected ArrayList<T> items;
     protected boolean isOpen = false;
 
     public Storage(String name) {
@@ -11,11 +11,11 @@ public abstract class Storage {
         this.items = new ArrayList<>();
     }
 
-    public void addItem(Item item) {
+    public void addItem(T item) {
         items.add(item);
     }
 
-    public ArrayList<Item> getItems() {
+    public ArrayList<T> getItems() {
         return items;
     }
 
@@ -28,7 +28,7 @@ public abstract class Storage {
             System.out.println("No items here.");
         } else {
             System.out.println("Items:");
-            for (Item item : items) {
+            for (T item : items) {
                 System.out.println("- " + item.getName());
             }
         }
@@ -51,7 +51,7 @@ public abstract class Storage {
 
 }
 
-class Shelves extends Storage implements SharedUses, Serializable {
+class Shelves extends Storage<Papyrus> implements SharedUses, Serializable {
 
     public Shelves(String name) {
         super(name);
@@ -71,7 +71,7 @@ class Shelves extends Storage implements SharedUses, Serializable {
     }
 }
 
-class Pithos extends Storage implements SharedUses, Serializable {
+class Pithos extends Storage<Item> implements SharedUses, Serializable {
 
     public Pithos(String name) {
         super(name);
@@ -91,7 +91,7 @@ class Pithos extends Storage implements SharedUses, Serializable {
     }
 }
 
-class Basket extends Storage implements SharedUses {
+class Basket extends Storage<Food> implements SharedUses, Serializable {
 
     public Basket(String name) {
         super(name);
@@ -110,5 +110,43 @@ class Basket extends Storage implements SharedUses {
     }
 }
 
+class Crate extends Storage<Shield> implements SharedUses, Serializable {
 
+    public Crate(String name) {
+        super(name);
+    }
+
+    @Override
+    public void open() {
+        System.out.println("You force open the crate " + name + " and see:");
+        showItems();
+        setOpen(true);
+    }
+
+    @Override
+    public void interact(Player player) {
+        open();
+        return;
+    }
+}
+
+class WeaponRack extends Storage<Weapon> implements SharedUses, Serializable {
+
+    public WeaponRack(String name) {
+        super(name);
+    }
+
+    @Override
+    public void open() {
+        System.out.println("You examine the  " + name + " and see:");
+        showItems();
+        setOpen(true);
+    }
+
+    @Override
+    public void interact(Player player) {
+        open();
+        return;
+    }
+}
 

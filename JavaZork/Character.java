@@ -13,6 +13,7 @@ public abstract class Character implements Serializable {
     protected double health;
     protected ArrayList<Item> inventory;
     private boolean stunned = false;
+    protected transient GameIO io;
 
 
     public Character(String name, Room startingRoom, double health) {
@@ -90,6 +91,10 @@ public abstract class Character implements Serializable {
             System.out.println(item.getName());
         }
     }
+
+    public void setIO(GameIO io) {
+        this.io = io;
+    }
 }
 
 
@@ -100,8 +105,8 @@ class NPC extends Character implements SharedUses, Serializable {
     private Item requiredItem;
     private Item rewardItem;
     private boolean tradeCompleted;
-    private GameIO io;
-    private GUI gui;
+    private transient GameIO io;
+    private transient GUI gui;
 
 
     public NPC(String name, Room startingRoom, double health) {
@@ -185,7 +190,7 @@ class NPC extends Character implements SharedUses, Serializable {
                     gui.refreshUI();
                 }
 
-                return "Trade successful! Received " + rewardItem.getName();
+                return "I appreciate your gratitude. Here is the " + rewardItem.getName() + " as promised.";
             } else {
                 return "I would like a " + requiredItem.getName() + ".";
             }
@@ -265,26 +270,24 @@ class Enemy extends Character implements Serializable {
         return ranShield.getBlockAmount();
     }
 
-
-    public boolean willBlock() {
-        //if (health < 15)
-        return Math.random() <= 0.3;
-    }
-
     public void onDeath(Player player) {
         if (health <= 0) {
             System.out.println("You defeated the " + name + "!");
-            player.modifyHonour("Ares", 10, "Defeated " + name);
+            player.modifyHonour("Ares", 25, "Defeated " + name);
             dropAllItems(currentRoom);
             currentRoom.removeEnemy(name);
         }
     }
 
     public void dropAllItems(Room room) {
-        System.out.println("The " + name + " dropped items: ");
-        for (Item item : inventory) {
-            System.out.print(item.getName() + "\n");
-            room.addItem(item);
+        if (inventory.isEmpty()) {
+            System.out.println("The " + name + " had nothing to drop.");
+        } else {
+            System.out.println("The " + name + " dropped items: ");
+            for (Item item : inventory) {
+                System.out.println(item.getName());
+                room.addItem(item);
+            }
         }
         inventory.clear();
     }

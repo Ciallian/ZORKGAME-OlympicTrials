@@ -50,8 +50,6 @@ class Player extends Character implements Serializable {
         honour.put("Ares", 0);
         honour.put("Poseidon", 0);
         honour.put("Athena", 0);
-        honour.put("Demeter", 0);
-        honour.put("Hera", 0);
     }
 
     public HashMap<String, Integer> getHonour() {
@@ -126,10 +124,6 @@ class Player extends Character implements Serializable {
             return 0;
         }
         return equippedShield.getBlockAmount();
-    }
-
-    public double getBaseDamage() {
-        return baseDamage;
     }
 
     public int checkGems () {

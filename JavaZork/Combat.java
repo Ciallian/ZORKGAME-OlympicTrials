@@ -9,14 +9,17 @@ public class Combat {
     private Player player;
     private Enemy enemy;
     private Room previousRoom;
-    private GameIO io;
+    private transient GameIO io;
     private boolean inCombat = true;
+    private OlympicTrials game;
+    private CombatChecker combatCheck;
 
-    public Combat(Player player, Enemy enemy, Room previousRoom, GameIO io) {
+    public Combat(Player player, Enemy enemy, Room previousRoom, GameIO io, OlympicTrials game) {
         this.player = player;
         this.enemy = enemy;
         this.previousRoom = previousRoom;
         this.io = io;
+        this.game = game;
     }
 
     public void start() {
@@ -25,14 +28,9 @@ public class Combat {
     }
 
     private void nextTurn() {
-        if (player.getHealth() <= 0) {
-            System.out.println("You have been slain by " + enemy.getName() + "...");
-            System.out.println("GAME OVER");
-            System.exit(0);
-        }
-
-        if (enemy.getHealth() <= 0) {
-            enemy.onDeath(player);
+        if (!inCombat || game.getGameEnd() != GameEnd.NONE) {
+            io.clearChoices();
+            return;
         }
 
         io.print("\nXXXXX COMBAT XXXXX");
@@ -45,6 +43,12 @@ public class Combat {
         io.setChoiceListener(new GameIO.ChoiceListener() {
             @Override
             public void choiceSelected(int choice) {
+                if (game.getGameEnd() != GameEnd.NONE) {
+                    io.clearChoices();
+                    inCombat = false;
+                    return;
+                }
+
                 CombatState playerState;
                 switch (choice) {
                     case 0:
@@ -71,6 +75,10 @@ public class Combat {
     }
 
     private void resolveTurn(CombatState playerState) {
+        if (game.getGameEnd() != GameEnd.NONE || !inCombat) {
+            return;
+        }
+
         CombatState enemyState = null;
         if (enemy.isStunned()) {
             System.out.println(enemy.getName() + " is stunned and cannot act this turn!");
@@ -120,12 +128,6 @@ public class Combat {
                 System.out.println("You flee from the " + enemy.getName() + "!");
                 player.setCurrentRoom(previousRoom);
                 System.out.println(player.getCurrentRoom().getLongDescription());
-                if (io instanceof GuiIO) {
-                    Platform.runLater(() -> {
-                        // trigger GUI's room refresh
-                        // this uses the RoomChange callback already in GUI
-                    });
-                }
                 endCombat();
                 return;
         }
@@ -182,13 +184,39 @@ public class Combat {
         if (inCombat && enemy.getHealth() > 0 && player.getHealth() > 0) {
             nextTurn();
         } else {
-            endCombat();
+            if (player.getHealth() <= 0) {
+                System.out.println("You have been slain by " + enemy.getName() + "...");
+                System.out.println("GAME OVER");
+                endCombat();
+                game.setGameEnd(GameEnd.PLAYER_DIED);
+                return;
+            }
+
+            if (enemy.getHealth() <= 0) {
+                enemy.onDeath(player);
+                endCombat();
+            }
+        }
+    }
+
+    public boolean isInCombat() {
+        return inCombat;
+    }
+
+    public void setCombatListener(CombatChecker check) {
+        this.combatCheck = check;
+    }
+
+    private void notifyEnd() {
+        if (combatCheck != null) {
+            Platform.runLater(() -> combatCheck.onCombatEnded());
         }
     }
 
     private void endCombat() {
         inCombat = false;
-        io.clearChoices();          // remove buttons
+        io.clearChoices();
+        notifyEnd();
     }
 
 }

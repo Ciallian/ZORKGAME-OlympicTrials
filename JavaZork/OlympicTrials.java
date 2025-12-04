@@ -15,7 +15,9 @@ emphasizing exploration and simple command-driven gameplay
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class OlympicTrials {
     private Parser parser;
@@ -23,6 +25,9 @@ public class OlympicTrials {
     private boolean olympusUnlocked = false;
     private RoomChange roomChange;
     private CombatChecker combatChecker;
+    private GameEnd gameEnd = GameEnd.NONE;
+    private GameIO io;
+    private final Set<String> firedEvents = new HashSet<>();
 
 
 
@@ -31,7 +36,7 @@ public class OlympicTrials {
         parser = new Parser();
     }
 
-    private Room cloudstep, zeus, balcony, secret, demeter, athena, study, ares, warRoom, haven, poseidon, midnight, midday, hera, olympus;
+    private Room cloudstep, zeus, balcony, secret, demeter, athena, study, ares, haven, poseidon, hera, olympus;
     private List<Room> allRooms = new ArrayList<>();
 
     private void createRooms() {
@@ -39,17 +44,14 @@ public class OlympicTrials {
         cloudstep = new Room("Cloudstep Plateau: A bright mystical place where you feel as if you're standing on a cloud", true);
         zeus = new Room("The Hall of Zeus: Grand marble pillars rise to the heavens, lightning crackles in the air", true);
         balcony = new Room("Overlooking Balcony: Views as far as the eye can see", true);
-        secret = new Room("Secret Exit: A hidden path shrouded in mystery", false);
+        secret = new Room("Secret Vault: A hidden cave littered with treasure", false);
         demeter = new Room("Garden of Demeter: Lush greenery and golden wheat sway in a warm divine breeze", true);
         athena = new Room("Library of Athena: Shelves of endless wisdom, scrolls glowing faintly with divine light", true);
-        study = new Room("Athena's Study: Quiet and filled with ancient scrolls", true);
+        study = new Room("Athena's Study: Quiet and filled with knowledge and secrets known only by the wisest", true);
         ares = new Room("Ares Battlefield: The ground trembles with echoes of clashing steel and roaring warriors", true);
-        warRoom = new Room("War Room: Maps, weapons, and strategy marks cover the walls", true);
         haven = new Room("Traveller's Haven: A cozy inn for weary souls crossing divine lands", true);
         poseidon = new Room("Poseidon's Palace: Crystal walls ripple with the rhythm of the ocean", false);
-        midnight = new Room("Midnight Moon: A tranquil courtyard bathed in silver moonlight", true);
-        midday = new Room("Midday Morning: Sunbeams illuminate golden clouds in perfect harmony", true);
-        hera = new Room("Hera’s Wrath: A storm of divine fury, lightning laced with vengeance", true);
+        hera = new Room("Hera's Wrath: A storm of divine fury, lightning laced with vengeance", true);
         olympus = new Room("Olympus: You made it", false);
 
         allRooms.add(cloudstep);
@@ -60,87 +62,141 @@ public class OlympicTrials {
         allRooms.add(athena);
         allRooms.add(study);
         allRooms.add(ares);
-        allRooms.add(warRoom);
         allRooms.add(haven);
         allRooms.add(poseidon);
-        allRooms.add(midnight);
-        allRooms.add(midday);
         allRooms.add(hera);
         allRooms.add(olympus);
 
 
-        // ITEMS and SUBCLASSES
+        //SEARCH ITEM
+        SearchItems hearthstoke = new SearchItems("Hearthstoke", "A fire poker", "Shadow Key");
+        SearchItems shovel = new SearchItems("Shovel", "A small shovel, maybe you can dig up something", "Ancient Scroll");
+        SearchItems chisel = new SearchItems("Chisel", "A small shovel, maybe there's a hidden item under the floor.", "Nature Key");
+
+
+
+        // HONOUR CHANGE ITEMS
+        HonourItems trident = new HonourItems("Poseidon's Trident", "A lost weapon of the gods, it holds too much power for you to wield, but he will be delighted you found it.", "Poseidon", 30);
+        HonourItems athenaHelmet = new HonourItems("Athena's Helmet", "Armour of the gods, it holds too much power for you to wear, but she will be delighted you found it.", "Athena", 50);
+
+        // FOOD
         Food ambrosia = new Food("Ambrosia big fat poo", "Food of the gods", 20);
         Food nectar = new Food("Nectar", "Brew of the gods", 20);
+        Food gyro = new Food("Gyro", "Meat deserving praise of the Gods", 30);
         Food potion1 = new Food("Red Potion", "Weak healing potion", 10);
         Food potion2 = new Food("Blue Potion", "Moderate healing potion", 25);
         Food potion3 = new Food("Green Potion", "Strong healing potion", 45);
         Food potion4 = new Food("Golden Potion", "Very strong healing potion", 75);
         Food potion5 = new Food("Elixir of Life", "Ultimate healing potion", 100);
-        Item introscroll = new Item("Helpful Scroll",
-                "You have been chosen by the gods as the lucky mortal.\n" +
-                        "Here you may achieve godhood if you prove your worth.\n" +
-                        "Complete these trials and ascend to your throne on Olympus!");
-        Item magicalFlower = new Item("Magical Flower", "A glowing flower that heals the weary.");
-        Key goldenKey = new Key("Key", "Unlocks divine secrets", "Golden");
-        GodlyGemstone rubyGem = new GodlyGemstone("Ruby Gem", "A gem pulsing with fiery divine energy");
-        GodlyGemstone sapphireGem = new GodlyGemstone("Sapphire Gem", "A gem infused with oceanic power");
-        GodlyGemstone emeraldGem = new GodlyGemstone("Emerald Gem", "A gem blessed by nature spirits");
-        GodlyGemstone celestialGold = new GodlyGemstone("Celestial Gold", "Metal touched by the gods");
-        GodlyGemstone lapizLazuli = new GodlyGemstone("Lapis Lazuli", "A dark relic of underworld power");
-        Key warKey = new Key("War Key", "A heavy iron key stained with blood", "Iron");
+        Item magicalFlower = new Food("Magical Flower", "A glowing flower that heals the weary.", 5);
+
+
+
+
+        //KEYS
+        Key warKey = new Key("War Key", "A heavy steel key stained with blood", "Steel");
         Key tideKey = new Key("Tide Key", "A key shaped like a wave crest", "Ocean Blue");
         Key natureKey = new Key("Nature Key", "A wooden key covered in moss", "Nature");
+        natureKey.setVisible(false);
         Key divineKey = new Key("Divine Key", "A key glowing with holy energy", "Divine");
         Key shadowKey = new Key("Shadow Key", "A cold black key humming with power", "Shadow");
+        shadowKey.setVisible(false);
+        Key goldenKey = new Key("Golden Key", "Unlocks divine secrets", "Golden");
+        Key silverKey = new Key("Silver Key", "Basic Key", "Silver");
 
-
+        //HELPFUL SCROLLS
+        Papyrus introscroll = new Papyrus("Intro Scroll", "You have been chosen by the gods as the lucky mortal.\n" + "Here you may achieve godhood if you prove your worth.\n" + "Complete these trials and ascend to your throne on Olympus! \n(Hint: Keys unlock chests of the same colour)");
+        Papyrus helpscroll = new Papyrus("Useful Scroll", "");
+        Papyrus hintscroll = new Papyrus("Hint Scroll", "There could be a secret room\nWisdom unlocks what is hidden.\n Athena guards the way.\nShadows conceal power. Seek the study of Athena.");
+        Papyrus helpscroll2 = new Papyrus("Useful Scroll", "Enemies can block, feint, and attack. \nBlock beats attack, feint beats block and attack beats feint.");
+        Papyrus hintscroll2 = new Papyrus("Help Scroll", "The sea yields only to its master's trident.\nBlood unlocks war's prize. The Hydra holds the key.");
+        Papyrus helpscroll3 = new Papyrus("Useful Scroll", "");
+        Papyrus ancientScroll = new Papyrus("Ancient Scroll", "A scroll filled with ancient wisdom.\n Words you don't understand dance across the page. \n Maybe somebody else wants it...");
+        ancientScroll.setVisible(false);
 
 
         // WEAPONS & SHIELDS
         Weapon dagger = new Weapon("Rusty Dagger", "Old, barely sharp dagger", 5);
         Weapon ironSword = new Weapon("Iron Sword", "Standard iron sword", 15);
-        Weapon shinySword = new Weapon("Shiny Sword", "Gleaming weapon of the gods", 25);
+        Weapon shinySpear = new Weapon("Imperial Gold Spear", "Gleaming weapon of the gods", 25);
+        Weapon shinySword = new Weapon("Celestial Bronze Sword", "Gleaming weapon of the gods", 25);
+        Weapon warHammer = new Weapon("War Hammer", "Sturdy Hammer designed for strong wielders", 30);
         Weapon warAxe = new Weapon("War Axe", "Heavy axe for serious battles", 35);
         Weapon divineSpear = new Weapon("Divine Spear", "Legendary spear, strikes with precision", 50);
+        Weapon club = new Weapon("Wooden Club", "A large, heavy looking club, fit for only the strongest to use.", 60);
         Shield woodenShield = new Shield("Wooden Shield", "Basic wooden shield", 5);
+        Shield hide = new Shield("Wolf's Hide", "Tough hide from a wolf", 15);
         Shield ironShield = new Shield("Iron Shield", "Solid shield for protection", 15);
         Shield goldenShield = new Shield("Golden Shield", "Bright golden shield", 25);
         Shield battleShield = new Shield("Battle Shield", "Reinforced for war", 35);
+        Shield hugeShield = new Shield("Huge Shield", "Nothing can get passed it", 60);
         Shield divineAegis = new Shield("Divine Aegis", "Shield of the gods", 70);
 
 
+        //GEMS (WIN CONDITION)
+        GodlyGemstone rubyGem = new GodlyGemstone("Ruby Gem", "A gem pulsing with fiery divine energy");
+        GodlyGemstone sapphireGem = new GodlyGemstone("Sapphire Gem", "A gem infused with oceanic power");
+        GodlyGemstone emeraldGem = new GodlyGemstone("Emerald Gem", "A gem blessed by nature spirits");
+        GodlyGemstone celestialGold = new GodlyGemstone("Celestial Gold", "Metal touched by the gods");
+        GodlyGemstone lapizLazuli = new GodlyGemstone("Lapis Lazuli", "A dark relic of underworld power");
 
         //STORAGES
         Pithos pithos1 = new Pithos("Clay Pithos");
-        Pithos pithos2 = new Pithos("Brown Pithos");
         pithos1.addItem(introscroll);
+        pithos1.addItem(potion1);
+        pithos1.addItem(silverKey);
+        Pithos pithos2 = new Pithos("Brown Pithos");
         pithos2.addItem(goldenKey);
         pithos2.addItem(ambrosia);
-        pithos2.addItem(nectar);
+        Pithos generalPithos = new Pithos("Pithos");
+        generalPithos.addItem(nectar);
+        generalPithos.addItem(dagger);
+        generalPithos.addItem(helpscroll2);
+        Pithos endPithos = new Pithos("Fancy Pithos");
+        endPithos.addItem(celestialGold);
         Chest silverChest = new Chest("Silver Chest", true, "Silver");
         silverChest.addItem(potion2);
-        silverChest.addItem(celestialGold);
-        Chest goldenChest = new Chest("Golden Chest", true, "Golden");
-        goldenChest.addItem(potion4);
-        goldenChest.addItem(shinySword);
-        Chest secretChest = new Chest("Ancient Hidden Chest", false, "Divine");
+        silverChest.addItem(ironSword);
+        silverChest.addItem(nectar);
+        silverChest.addItem(chisel);
+        Chest secretChest = new Chest("Ancient Hidden Chest", true, "Divine");
         secretChest.addItem(potion5);
         secretChest.addItem(divineSpear);
-        secretChest.addItem(celestialGold);
+        secretChest.addItem(trident);
+        secretChest.addItem(divineAegis);
         Chest libraryChest = new Chest("Golden Library Chest", true, "Golden");
         libraryChest.addItem(goldenShield);
-        Chest shadowChest = new Chest("Obsidian Chest", true, "Shadow");
+        libraryChest.addItem(potion3);
+        libraryChest.addItem(shinySword);
+        libraryChest.addItem(shovel);
+        Chest shadowChest = new Chest("Shadow Chest", true, "Shadow");
         shadowChest.addItem(lapizLazuli);
+        shadowChest.addItem(potion4);
         Chest gardenChest = new Chest("Rootbound Chest", true, "Nature");
         gardenChest.addItem(emeraldGem);
         Chest tideChest = new Chest("Coral Chest", true, "Ocean Blue");
         tideChest.addItem(sapphireGem);
-        Chest warChest = new Chest("Bloodstained War Chest", true, "Iron");
+        Chest warChest = new Chest("Bloodstained War Chest", true, "Steel");
         warChest.addItem(rubyGem);
-
-
-
+        Shelves oldShelf = new Shelves("Worn Shelf");
+        oldShelf.addItem(hintscroll);
+        oldShelf.addItem(hintscroll2);
+        WeaponRack steelRack = new WeaponRack("Steel Weapon Rack");
+        steelRack.addItem(warAxe);
+        steelRack.addItem(ironSword);
+        steelRack.addItem(shinySword);
+        steelRack.addItem(dagger);
+        WeaponRack studyRack = new WeaponRack("Weapon Rack of Athena");
+        studyRack.addItem(ironSword);
+        studyRack.addItem(warHammer);
+        Crate brownCrate = new Crate("Sturdy Crate");
+        brownCrate.addItem(battleShield);
+        brownCrate.addItem(ironShield);
+        brownCrate.addItem(goldenShield);
+        brownCrate.addItem(woodenShield);
+        Basket wovenBasket = new Basket("Reed Basket");
+        wovenBasket.addItem(gyro);
+        wovenBasket.addItem(potion2);
 
 
         // NPCs
@@ -151,36 +207,49 @@ public class OlympicTrials {
         nymph.setTrade(introscroll, magicalFlower);
 
         NPC innkeeper = new NPC("Innkeeper", haven, 50);
-        innkeeper.addDialogue("Rest your bones, traveler."); innkeeper.addDialogue("Dark things stir beneath Poseidon's halls...");
-        innkeeper.setTrade(potion2, potion3); // trade Blue Potion for Green Potion
+        innkeeper.addDialogue("Rest your bones, traveler.");
+        innkeeper.setTrade(potion1, hearthstoke);
 
-        NPC oracle = new NPC("Sylpha the Wind Oracle", cloudstep, 70);
-        oracle.addDialogue("The winds whisper your fate, mortal...");
-        oracle.addDialogue("Seek honour, for the gods are watching.");
+        NPC wearyTraveller = new NPC("Exhausted Traveller", haven, 50);
+        wearyTraveller.addDialogue("Im taking a rest, how am I alive.");
+        wearyTraveller.addDialogue("\nBeware traveller, the room ahead contains a powerful fow.");
+        wearyTraveller.addDialogue("\nAvoid it at all costs unless you are suitably prepared.");
+        wearyTraveller.addDialogue("Im taking a rest.");
+
+
+
+        NPC gardner = new NPC("Plant Gardner", demeter, 70);
+        gardner.addDialogue("Fancy seeing someone else here");
+        gardner.addDialogue("\nFor years I've tended to these gardens alone, undisturbed.");
+        gardner.addDialogue("\nI recall hearing a tale of scrolls being hidden in these gardens...");
+
 
         NPC scholar = new NPC("Old Scholar Theron", athena, 60);
-        scholar.addDialogue("Knowledge is sharper than any blade.");
-        scholar.addDialogue("The Golden Chest hides more than gold.");
-
+        scholar.addDialogue("Knowledge is sharper than any blade.\nSolve my riddle to find the Key of Shadow's.");
+        scholar.addDialogue("\n Find a place where weary souls find rest.\n If you seek a potion coloured like blood, do not wander aimlessly, listen to the whispers near the hearth, where stories gather like embers.");
+        scholar.addDialogue("\n Sometimes, the smallest trinket hides where warmth and tales entwine. \nUse a hearthstoke to reveal the secrets that hide.");
+        scholar.setTrade(ancientScroll, athenaHelmet);
 
         NPC veteran = new NPC("Broken Veteran", ares, 40);
         veteran.addDialogue("War never leaves you...");
-        veteran.addDialogue("I once earned Ares' favour. It cost me everything.");
-
+        veteran.addDialogue("Pleasing Ares may be difficult, but your power will increase tremendously.");
+        veteran.setTrade(warHammer, divineKey);
 
 
 
         // ENEMIES
-        Enemy hydra = new Enemy("Hydra", demeter, 200, 3);
-        hydra.addItem(divineAegis);
-        hydra.addItem(dagger);
-        Enemy wolf = new Enemy("Hydra", ares, 100, 20);
-        hydra.addItem(divineAegis);
-        hydra.addItem(dagger);
+        Enemy hydra = new Enemy("Hydra", ares, 100,  5);
+        hydra.addItem(goldenShield);
+        hydra.addItem(shinySpear);
+        hydra.addItem(warKey);
+        Enemy wolf = new Enemy("Wolf", demeter, 50, 10);
+        wolf.addItem(hide);
+        Enemy cyclops = new Enemy("Hera's Cyclops of Doom", hera, 300,  20);
+        cyclops.addItem(club);
+        cyclops.addItem(hugeShield);
+        cyclops.addItem(tideKey);
 
-
-
-// ROOM FUNCTIONS
+//            ROOM FUNCTIONS
 
 // cloudstep
         cloudstep.setExit("north", zeus);
@@ -188,7 +257,7 @@ public class OlympicTrials {
         cloudstep.addItem(woodenShield);
         cloudstep.addStorage("Clay Pithos", pithos1);
         cloudstep.addNPC(nymph);
-        cloudstep.addNPC(oracle);
+
 
 // zeus
         zeus.setExit("south", cloudstep);
@@ -197,8 +266,6 @@ public class OlympicTrials {
         zeus.setExit("west", demeter);
         zeus.addStorage("Brown Pithos", pithos2);
         zeus.addStorage("Silver Chest", silverChest);
-        zeus.addItem(rubyGem);
-        zeus.addItem(divineSpear);
 
 
 // balcony
@@ -210,61 +277,58 @@ public class OlympicTrials {
         secret.setExit("east", balcony);
         secret.addStorage("Ancient Hidden Chest", secretChest);
 
-
 // demeter
         demeter.setExit("east", zeus);
         demeter.setExit("north", ares);
-        demeter.addEnemy(hydra);
+        demeter.addEnemy(wolf);
         demeter.addStorage(gardenChest.getName(), gardenChest);
+        demeter.addItem(ancientScroll);
+        demeter.addNPC(gardner);
 
 // athena
         athena.setExit("west", zeus);
         athena.setExit("north", haven);
         athena.setExit("east", study);
-        athena.addStorage("Golden Chest", goldenChest);
-        athena.addStorage("Library Chest", libraryChest);
+        athena.addStorage(libraryChest.getName(), libraryChest);
         athena.addNPC(scholar);
-
+        athena.addStorage(oldShelf.getName(), oldShelf);
 
 // study
         study.setExit("west", athena);
+        study.addStorage(shadowChest.getName(), shadowChest);
+        study.addStorage(studyRack.getName(), studyRack);
+
 
 // haven
         haven.setExit("south", athena);
         haven.setExit("east", poseidon);
-        haven.setExit("north", midnight);
+        haven.setExit("north", hera);
         haven.addNPC(innkeeper);
+        haven.addItem(shadowKey);
+        haven.addStorage(generalPithos.getName(), generalPithos);
+        haven.addNPC(wearyTraveller);
 
 // poseidon
         poseidon.setExit("west", haven);
-        poseidon.addStorage("coral chest", tideChest);
+        poseidon.addStorage("Coral Chest", tideChest);
 
 // ares
-        ares.setExit("north", midday);
+        ares.setExit("east", hera);
         ares.setExit("south", demeter);
-        ares.setExit("west", warRoom);
         ares.addNPC(veteran);
-        ares.addStorage("war chest", warChest);
-
-// warRoom
-        warRoom.setExit("east", ares);
-
-// midnight
-        midnight.setExit("south", haven);
-        midnight.setExit("north", hera);
-        midnight.addStorage("obsidian chest", shadowChest);
-
-// midday
-        midday.setExit("east", hera);
-        midday.setExit("south", ares);
+        ares.addEnemy(hydra);
+        ares.addStorage("War Chest", warChest);
+        ares.addStorage(steelRack.getName(), steelRack);
 
 // hera
-        hera.setExit("south", midnight);
-        hera.setExit("west", midday);
+        hera.setExit("south", haven);
+        hera.setExit("west", ares);
         hera.setExit("north", olympus);
+        hera.addEnemy(cyclops);
+        hera.addStorage(endPithos.getName(), endPithos);
 
         // PLAYER
-        player = new Player("Sigma", cloudstep, 1000, 2);
+        player = new Player("Sigma", cloudstep, 200, 2);
 
     }
     public Player getPlayer() {
@@ -274,11 +338,16 @@ public class OlympicTrials {
     public void play() {
         printWelcome();
         boolean finished = false;
-        while (!finished) {
+        while (!finished && gameEnd == GameEnd.NONE) {
             Command command = parser.getCommand();
             finished = processCommand(command);
         }
-        System.out.println("Thank you for playing. Goodbye.");
+
+        switch (gameEnd) {
+            case PLAYER_DIED -> io.print("You have died. Game over.");
+            case PLAYER_WON -> io.print("Congratulations! You won!");
+            case PLAYER_QUIT -> io.print("You quit the game. Goodbye.");
+        }
     }
 
     public void printWelcome() {
@@ -310,10 +379,11 @@ public class OlympicTrials {
             case "quit":
                 if (command.hasSecondWord()) {
                     System.out.println("Quit what?");
-                    return false;
+                    return true;
                 } else {
-                    return true; // signal to quit
-                }
+                    setGameEnd(GameEnd.PLAYER_QUIT);
+                    return false;
+                 }
             case "inventory":
                 player.showInventory();
                 break;
@@ -378,7 +448,7 @@ public class OlympicTrials {
             System.out.println("The gods acknowledge your worth.");
             System.out.println("You ascend to your throne and into legend.");
             System.out.println(" YOU HAVE WON THE GAME ");
-            System.exit(0);
+            setGameEnd(GameEnd.PLAYER_WON);
         } else {
             Room previousRoom = player.getCurrentRoom();
             player.setCurrentRoom(nextRoom);
@@ -419,7 +489,7 @@ public class OlympicTrials {
         }
 
         if (isItemThere == null) {
-            for (Storage storage : currentRoom.getStorages().values()) {
+            for (Storage<? extends Item> storage : currentRoom.getStorages().values()) {
                 if (storage.isOpen) {
                     for (Item item : storage.getItems()) {
                         if (item.getName().equalsIgnoreCase(itemName)) {
@@ -433,7 +503,7 @@ public class OlympicTrials {
         }
 
         if (isItemThere == null) {
-            for (Storage storage : currentRoom.getStorages().values()) {
+            for (Storage<? extends Item> storage : currentRoom.getStorages().values()) {
                 if (!storage.isOpen()) {
                     for (Item item : storage.getItems()) {
                         if (item.getName().equalsIgnoreCase(itemName)) {
@@ -446,7 +516,6 @@ public class OlympicTrials {
             System.out.println("That item isn't here!");
         } else {
             player.pickup(isItemThere, player.getCurrentRoom());
-            player.modifyHonour("Poseidon", 60, "Bold");
             System.out.println("You picked up the " + itemName + "!");
         }
     }
@@ -521,212 +590,60 @@ public class OlympicTrials {
 
         //NPCs
         NPC npc = currentRoom.getNPC(targetName);
-        if (npc instanceof SharedUses interactable) {
-            interactable.interact(player);
+        if (npc != null) {
+            npc.interact(player);
             return;
         }
 
         //Storages
         Storage storage = currentRoom.getStorage(targetName);
-        if (storage instanceof SharedUses interactable) {
-            interactable.interact(player);
+        if (storage != null) {
+            storage.interact(player);
             return;
         }
 
+
         //Items (Room and Player)
         for (Item item : currentRoom.getItems()) {
-            if (item instanceof SharedUses interactable && item.getName().equalsIgnoreCase(targetName)) {
-                interactable.interact(player);
+            if (item.getName().equalsIgnoreCase(targetName)) {
+                item.interact(player);
                 return;
             }
         }
-
         for (Item item : player.getInventory()) {
-            if (item instanceof SharedUses interactable && item.getName().equalsIgnoreCase(targetName)) {
-                interactable.interact(player);
-                if (item instanceof Food && item.getName().equalsIgnoreCase(targetName))
+            if (item.getName().equalsIgnoreCase(targetName)) {
+                item.interact(player);
+                if (item instanceof Food || item instanceof HonourItems || item instanceof SearchItems && item.getName().equalsIgnoreCase(targetName))
                     player.getInventory().remove(item);
                 return;
             }
         }
 
-        System.out.println("You can’t interact with that right now.");
+        System.out.println("You can't interact with that right now.");
     }
 
-    /*public void startCombat(Enemy enemy, Room previousRoom) {
-        Scanner input = new Scanner(System.in);
-        CombatState playerState = null;
-        CombatState enemyState = null;
-        boolean inCombat = true;
-
-        System.out.println("You are ambushed by a " + enemy.getName() + "!");
-
-        while (inCombat) {
-
-            System.out.println("\nXXXXX COMBAT XXXXX ");
-            System.out.println("Your Health: " + player.getHealth());
-            System.out.println(enemy.getName() + " Health: " + enemy.getHealth());
-
-            // Player Chooses action
-                System.out.println("Choose your action:");
-                System.out.println("1) Attack");
-                System.out.println("2) Block");
-                System.out.println("3) Feint");
-                System.out.println("4) Run");
-
-                String choice = input.nextLine();
-
-                switch (choice) {
-                    case "1":
-                        playerState = CombatState.ATTACK;
-                        break;
-                    case "2":
-                        playerState = CombatState.BLOCK;
-                        break;
-                    case "3":
-                        playerState = CombatState.FEINT;
-                        break;
-                    case "4":
-                        playerState = CombatState.RUN;
-                        break;
-                    default:
-                        System.out.println("You hesitate...");
-                        player.applyStun();
-                        playerState = CombatState.STUN; //prevents state from becoming null
-                        break;
-                }
-
-            // Enemy Chooses Action
-            if (enemy.isStunned()) {
-                System.out.println(enemy.getName() + " is stunned and cannot act this turn!");
-                enemy.clearStun();
-                enemyState = CombatState.STUN;
-            } else {
-                enemyState = enemy.chooseAction();
-            }
-
-
-            // Player does action
-                switch (playerState) {
-                    case ATTACK:
-                        double damage = player.attack();
-                        if (enemyState == CombatState.BLOCK) {
-                            double blocked = enemy.block();
-                            if (damage <= blocked + 20) {
-                                System.out.println(enemy.getName() + " perfectly blocks your attack!");
-                                System.out.println("The impact reverberates through your body — you are stunned!");
-                                damage -= blocked;
-                                if (damage < 0) damage = 0;
-                                player.applyStun();
-                            } else {
-                                damage -= blocked;
-                                System.out.println(enemy.getName() + " blocks, reducing incoming damage!");
-                            }
-                        }
-                        enemy.takeDamage(damage);
-                        if (damage > 0) {
-                            System.out.println("You hit " + enemy.getName() + " for " + damage + " damage!");
-                        } else {
-                            System.out.println("Your attack dealt no damage!");
-                        }
-                        break;
-                    case BLOCK:
-                        System.out.println("You raise your shield, ready to block!");
-                        if (enemyState == CombatState.FEINT) {
-                            System.out.println(enemy.getName() + " feinted, leaving you wide open!");
-                            player.applyStun();
-                            playerState = CombatState.STUN;
-                        }
-                        break;
-                    case FEINT:
-                        System.out.println("You feint to confuse your opponent!");
-                        break;
-                    case RUN:
-                        System.out.println("You flee from the " + enemy.getName() + "!");
-                        player.setCurrentRoom(previousRoom);
-                        System.out.println(player.getCurrentRoom().getLongDescription());
-                        inCombat = false;
-                        continue;
-                }
-
-
-            // Enemy does action
-            if (enemy.getHealth() > 0) {
-                if (player.isStunned()) {
-                    enemyState = CombatState.ATTACK;
-                    System.out.println("The " + enemy.getName() + " takes advantage of your weakened state!");
-                    player.clearStun();
-                }
-                switch(enemyState) {
-                    case ATTACK:
-                        double enemyDamage = enemy.attack();
-                        if (playerState == CombatState.BLOCK && player.getEquippedShield() != null) {
-                            double blocked = player.block();
-                            if (enemyDamage < blocked + 20) {
-                                enemyDamage -= blocked;
-                                if (enemyDamage < 0) enemyDamage = 0;
-                                enemy.applyStun();
-                            } else {
-                                enemyDamage -= blocked;
-                                if (enemyDamage < 0) enemyDamage = 0;
-                                System.out.println("You block " + blocked + " damage!");
-                            }
-                        }
-                        player.takeDamage(enemyDamage);
-                        if (enemyDamage > 0) {
-                            System.out.println(enemy.getName() + " strikes you for " + enemyDamage + " damage!");
-                        } else {
-                            System.out.println(enemy.getName() + "'s attack glances off your defence, stunning it for a turn!");
-                        }
-                        break;
-
-                    case BLOCK:
-                        if (playerState == CombatState.BLOCK) {
-                            System.out.println(enemy.getName() + " raises it's shield.");
-                        }
-                        if (playerState == CombatState.FEINT) {
-                        System.out.println(enemy.getName() + " tried to block but was deceived by your feint stunning it!");
-                        enemy.applyStun();
-                        }
-                        break;
-
-                    case FEINT:
-                        if (playerState != CombatState.BLOCK) {
-                        System.out.println(enemy.getName() + " threw a feint.");
-                        }
-                        break;
-                }
-            }
-
-            // On death
-            if (player.getHealth() <= 0) {
-                System.out.println("You have been slain by " + enemy.getName() + "...");
-                System.out.println("GAME OVER");
-                System.exit(0);
-            }
-
-            if (enemy.getHealth() <= 0) {
-                enemy.onDeath(player);
-                inCombat = false;
-            }
-        }
-    }*/
-
     private void checkHonourEvents() {
-        if (player.getHonour("Poseidon") >= 30 && !poseidon.isVisible()) {
+
+        if (player.getHonour("Poseidon") >= 30 && !firedEvents.contains("POSEIDON_DONE")) {
+            System.out.println("Poseidon believes in your courage!");
             poseidon.setVisible(true);
             System.out.println("Poseidon's Palace rises from the deep!");
+            firedEvents.add("POSEIDON_DONE");
+
         }
 
 
-        if (player.getHonour("Athena") >= 20 && !secret.isVisible()) {
+        if (player.getHonour("Athena") >= 50 && !firedEvents.contains("ATHENA_DONE")) {
+            System.out.println("Athena is pleased with your wisdom!");
             secret.setVisible(true);
             System.out.println("A hidden passage behind the balcony reveals itself!");
+            firedEvents.add("ATHENA_DONE");
         }
 
 
-        if (player.getHonour("Ares") >= 50) {
+        if (player.getHonour("Ares") >= 50 && !firedEvents.contains("ARES_DONE")) {
             System.out.println("Ares roars proudly at your strength! (All attacks deal more damage)");
+            firedEvents.add("ARES_DONE");
         }
     }
 
@@ -743,10 +660,15 @@ public class OlympicTrials {
         GodlyGemstone cheatGem1 = new GodlyGemstone("Forbidden Gem 1", "A gem with unknown and uncontrollable power");
         GodlyGemstone cheatGem2 = new GodlyGemstone("Forbidden Gem 2", "A gem with unknown and uncontrollable power");
         GodlyGemstone cheatGem3 = new GodlyGemstone("Forbidden Gem 3", "A gem with unknown and uncontrollable power");
+        Shield iseRepellent = new Shield("Athena's Aegis", "Repellent of All", 1000);
+        Weapon lightningBolt = new Weapon("Zeus's Lightning Bolt", "Destroys Everything in its Path.", 1000);
         player.getInventory().add(cheatGem1);
         player.getInventory().add(cheatGem2);
         player.getInventory().add(cheatGem3);
+        player.getInventory().add(lightningBolt);
+        player.getInventory().add(iseRepellent);
         player.setCurrentRoom(hera);
+        player.setHealth(10000);
         checkOlympusUnlock();
     }
 
@@ -768,6 +690,14 @@ public class OlympicTrials {
         } catch (IOException | ClassNotFoundException e) {
             System.out.println("Error loading game: " + e.getMessage());
         }
+    }
+
+    public GameEnd getGameEnd() {
+        return gameEnd;
+    }
+
+    public void setGameEnd(GameEnd end) {
+        gameEnd = end;
     }
 
     public static void main(String[] args) {

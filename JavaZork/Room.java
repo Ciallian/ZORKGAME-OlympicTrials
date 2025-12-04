@@ -6,7 +6,7 @@ import java.util.Map;
 public class Room implements Serializable {
     private String description;
     private Map<String, Room> exits;
-    private Map<String, Storage> storages;
+    private Map<String, Storage<? extends Item>> storages;
     private Map<String, NPC> npcs;
     private Map<String, Enemy> enemies;
     private ArrayList<Item> items;
@@ -54,15 +54,21 @@ public class Room implements Serializable {
     }
 
     public void look() {
-        boolean hasItems = !items.isEmpty();
+        boolean hasVisibleItems = false;
+        for (Item item : items) {
+            if (item.isVisible()) {
+                hasVisibleItems = !items.isEmpty();
+                break;
+            }
+        }
         boolean hasStorages = !storages.isEmpty();
         boolean hasNPCs = !npcs.isEmpty();
 
 
         System.out.println(getLongDescription());
 
-        if (!hasItems && !hasStorages && !hasNPCs) {
-            System.out.println("The room is empty — nothing catches your eye.");
+        if (!hasVisibleItems && !hasStorages && !hasNPCs) {
+            System.out.println("The room is empty, nothing catches your eye.");
             return;
         }
 
@@ -70,17 +76,19 @@ public class Room implements Serializable {
         if (hasNPCs) {
             System.out.println("You see people:");
             for (NPC npc : npcs.values()) {
-                System.out.println(" - " + npc.getName());
+                System.out.println(" > " + npc.getName());
             }
         } else {
             System.out.println("Nobody else is here.");
         }
 
         // Items
-        if (hasItems) {
+        if (hasVisibleItems) {
             System.out.println("You look around and see these items:");
             for (Item item : items) {
-                System.out.println(" - " + item.getName());
+                if (item.isVisible()) {
+                    System.out.println(" > " + item.getName());
+                }
             }
         } else {
             System.out.println("No items lying around here.");
@@ -90,7 +98,7 @@ public class Room implements Serializable {
         if (hasStorages) {
             System.out.println("You also notice these storage objects:");
             for (String name : storages.keySet()) {
-                System.out.println(" - " + storages.get(name).getName());
+                System.out.println(" > " + storages.get(name).getName());
             }
         } else {
             System.out.println("No storages here.");
@@ -107,7 +115,7 @@ public class Room implements Serializable {
         return storages.get(name.toLowerCase());
     }
 
-    public Map<String, Storage> getStorages() {
+    public Map<String, Storage<? extends Item>> getStorages() {
         return storages;
     }
 
@@ -142,8 +150,8 @@ public class Room implements Serializable {
         enemies.put(enemy.getName().toLowerCase(), enemy);
     }
 
-    public Enemy getEnemy(String name) {
-        return enemies.get(name.toLowerCase());
+    public Map<String, Enemy> getEnemies() {
+        return enemies;
     }
 
     public Enemy getOnlyEnemy() {

@@ -1,13 +1,12 @@
 import java.io.Serializable;
 
-public class Item implements SharedUses, Serializable {
+public abstract class Item implements SharedUses, Serializable {
     private String description;
     private String name;
     private String location;
     private int id;
     private boolean isVisible;
-    private String honourGod;
-    private int honourAmount;
+
 
     public Item(String name, String description) {
         this.name = name;
@@ -55,20 +54,66 @@ public class Item implements SharedUses, Serializable {
         isVisible = visible;
     }
 
-    public void setHonourEffect(String god, int amount) {
-        this.honourGod = god;
-        this.honourAmount = amount;
-    }
-
-
-
-
     @Override
     public void interact(Player player) {
         System.out.println(description);
+    }
+
+}
+
+class SearchItems extends Item implements SharedUses, Serializable {
+    private String foundItem;
+
+    public SearchItems(String name, String description, String foundItem) {
+        super(name, description);
+        this.foundItem = foundItem;
+    }
+
+    @Override
+    public void interact(Player player) {
+
+        Item target = findItemInRoomByName(player.getCurrentRoom(), foundItem);
+        if (target == null) {
+            System.out.println("Using the" + getName() + "yielded no result...");
+            return;
+        }
+
+        if (!target.isVisible()) {
+            target.setVisible(true);
+            System.out.println("You uncover " + target.getName() + "! It was cleverly concealed.");
+        } else {
+            System.out.println("You've already revealed " + target.getName() + " here.");
+        }
+    }
+
+    private Item findItemInRoomByName(Room room, String name) {
+        for (Item item : room.getItems()) {
+            if (item.getName().equalsIgnoreCase(name)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+}
+
+class HonourItems extends Item implements SharedUses, Serializable {
+    private String honourGod;
+    private int honourAmount;
+
+    public HonourItems(String name, String description, String honourGod, int honourAmount) {
+        super(name, description);
+        this.honourGod = honourGod;
+        this.honourAmount = honourAmount;
+
+    }
+
+    @Override
+    public void interact(Player player) {
+        System.out.println(getDescription());
 
         if (honourGod != null);
-        player.modifyHonour(honourGod, honourAmount, "Interacted with - " + name);
+        player.modifyHonour(honourGod, honourAmount, "Interacted with: " + getName());
     }
 }
 
@@ -140,3 +185,12 @@ class GodlyGemstone extends Item {
         super(name, description);
     }
 }
+
+class Papyrus extends Item implements Serializable {
+
+    public Papyrus(String name, String description) {
+        super(name, description);
+    }
+
+}
+

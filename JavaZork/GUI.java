@@ -7,24 +7,35 @@ import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.sql.SQLOutput;
-import java.util.ArrayList;
 import java.util.List;
 
 public class GUI extends Application implements RoomChange, CombatChecker {
     private OlympicTrials game;
     private TextArea outputArea;
     private TextField inputField;
-    private ImageView roomImageView;
     private ImageView mapImageView;
     private ComboBox<String> interactDropdown;
     private ListView<String> inventoryList;
+    private Button takeButton;
+    private Button dropButton;
+    private Button equipButton;
+    private Button northButton;
+    private Button southButton;
+    private Button eastButton;
+    private Button westButton;
+    private Button lookButton;
+    private Button interactButton;
+    private Button saveButton;
+    private Button loadButton;
     private GuiIO guiGameIO;
     private HBox choiceButtonBox; //Choices for NPC and Combat
     private boolean roomInspected = false;
+    private Combat currentCombat;
+    private boolean guiInCombat = false;
+
+
 
 
     @Override
@@ -36,15 +47,23 @@ public class GUI extends Application implements RoomChange, CombatChecker {
         outputArea = new TextArea();
         outputArea.setEditable(false);
         outputArea.setWrapText(true);
-        outputArea.setPrefHeight(180);
-
+        outputArea.setPrefHeight(300); // make terminal bigger
         redirectSystemOut();
+
+        // INPUT BAR (under terminal, same width)
+        inputField = new TextField();
+        inputField.setPromptText("Enter command..........");
+        inputField.setOnAction(e -> handleInput());
+        HBox inputBar = new HBox(inputField);
+        inputBar.setAlignment(Pos.CENTER_LEFT);
+        inputBar.setPrefWidth(50);
 
         // CHOICE BUTTON BOX
         choiceButtonBox = new HBox(10);
         choiceButtonBox.setAlignment(Pos.CENTER_LEFT);
 
-        // Initialize GuiIO
+
+        // Initialize GuiIO for NPCs
         guiGameIO = new GuiIO(outputArea, choiceButtonBox);
         for (Room room : game.getAllRooms()) {
             for (NPC npc : room.getNPCs().values()) {
@@ -52,32 +71,32 @@ public class GUI extends Application implements RoomChange, CombatChecker {
                 npc.setGUI(this);
             }
         }
-        // INPUT BAR
-        inputField = new TextField();
-        inputField.setPromptText("Enter command...");
-        Button sendButton = new Button("Send");
-        HBox commandBar = new HBox(10, inputField, sendButton);
-        commandBar.setAlignment(Pos.CENTER);
-
-        sendButton.setOnAction(e -> handleInput());
-        inputField.setOnAction(e -> handleInput());
 
         // MAP IMAGE
-        mapImageView = new ImageView();
+        ImageView mapImageView = new ImageView(new javafx.scene.image.Image("file:C:/Users/djsqu/OneDrive/Pictures/Screenshots/map.png"));
         mapImageView.setFitWidth(400);
         mapImageView.setFitHeight(250);
         mapImageView.setPreserveRatio(true);
-
         VBox mapBox = new VBox(5, new Label("Map"), mapImageView);
 
+        // INVENTORY
+        inventoryList = new ListView<>();
+        inventoryList.setPrefHeight(200);
+        inventoryList.setOnMouseClicked(e -> {
+            String selected = inventoryList.getSelectionModel().getSelectedItem();
+            if (selected != null) interactDropdown.setValue(selected);
+        });
+        VBox inventoryBox = new VBox(5, new Label("Inventory"), inventoryList);
 
         // DROPDOWN & ACTION BUTTONS
         interactDropdown = new ComboBox<>();
         interactDropdown.setPromptText("Select target...");
-        Button interactButton = new Button("Interact");
-        Button takeButton = new Button("Take");
-        Button dropButton = new Button("Drop");
-        Button equipButton = new Button("Equip");
+        interactButton = new Button("Interact");
+        takeButton = new Button("Take");
+        dropButton = new Button("Drop");
+        equipButton = new Button("Equip");
+        saveButton = new Button("Save Game");
+        loadButton = new Button("Load Game");
 
         interactButton.setOnAction(e -> runDropdownCommand("interact"));
         takeButton.setOnAction(e -> runDropdownCommand("take"));
@@ -87,22 +106,27 @@ public class GUI extends Application implements RoomChange, CombatChecker {
         HBox actionBar = new HBox(10, interactDropdown, interactButton, takeButton, dropButton, equipButton);
         actionBar.setAlignment(Pos.CENTER_LEFT);
 
-        // INVENTORY
-        inventoryList = new ListView<>();
-        inventoryList.setPrefHeight(200);
-        inventoryList.setOnMouseClicked(e -> {
-            String selected = inventoryList.getSelectionModel().getSelectedItem();
-            if (selected != null) interactDropdown.setValue(selected);
+        // Separate row for Save/Load buttons
+        HBox saveLoadBox = new HBox(10, saveButton, loadButton);
+        saveLoadBox.setAlignment(Pos.CENTER_LEFT);
+        saveLoadBox.setPadding(new Insets(0, 0, 0, 100)); // align under Interact button
+
+        saveButton.setOnAction(e -> process("save"));
+        loadButton.setOnAction(e -> {
+            process("load");
+            if (game.getGameEnd() == GameEnd.PLAYER_QUIT) {
+                game.setGameEnd(GameEnd.NONE);
+                reEnableAllUI();
+                refreshUI();
+            }
         });
 
-        VBox inventoryBox = new VBox(5, new Label("Inventory"), inventoryList);
-
         // MOVEMENT BUTTONS
-        Button northButton = new Button("North");
-        Button southButton = new Button("South");
-        Button eastButton = new Button("East");
-        Button westButton = new Button("West");
-        Button lookButton = new Button("Look");
+        northButton = new Button("North");
+        southButton = new Button("South");
+        eastButton = new Button("East");
+        westButton = new Button("West");
+        lookButton = new Button("Look..");
 
         northButton.setOnAction(e -> process("go north"));
         southButton.setOnAction(e -> process("go south"));
@@ -124,28 +148,39 @@ public class GUI extends Application implements RoomChange, CombatChecker {
         movementBar.setAlignment(Pos.CENTER);
 
         // LEFT COLUMN
-        VBox leftColumn = new VBox(10, mapBox, inventoryBox, new Label("Terminal"), outputArea, commandBar, choiceButtonBox);
+        VBox leftColumn = new VBox(10, outputArea, inputBar, choiceButtonBox, actionBar, movementBar);
         leftColumn.setAlignment(Pos.TOP_LEFT);
         leftColumn.setPrefWidth(550);
+        actionBar.setAlignment(Pos.CENTER);
+        movementBar.setAlignment(Pos.CENTER);
+        movementBar.setPadding(new Insets(20, 0, 0, 0));
 
-        // RIGHT COLUMN
-        VBox rightColumn = new VBox(10, mapBox, movementBar, actionBar);
+        // RIGHT COLUMN: map + inventory
+        VBox rightColumn = new VBox(10, mapBox, inventoryBox, saveLoadBox);
         rightColumn.setAlignment(Pos.TOP_CENTER);
 
+        // ROOT
         BorderPane root = new BorderPane();
         root.setLeft(leftColumn);
         root.setRight(rightColumn);
         root.setPadding(new Insets(10));
 
-        Scene scene = new Scene(root, 1100, 700);
+        // BACKGROUND IMAGE
+        ImageView background = new ImageView(new javafx.scene.image.Image("file:C:/Users/djsqu/OneDrive/Pictures/castle.jpg"));
+        background.setFitWidth(1100);
+        background.setFitHeight(700);
+        background.setPreserveRatio(false);
+
+        StackPane stackRoot = new StackPane(background, root);
+        Scene scene = new Scene(stackRoot, 1100, 700);
         stage.setTitle("ZorkUL GUI");
         stage.setScene(scene);
         stage.show();
-        game.printWelcome();
 
-        // Initial UI refresh
-        refreshUI();
+        game.printWelcome();
+        refreshUI(); // Initial UI refresh
     }
+
 
     private void handleInput() {
         String text = inputField.getText().trim();
@@ -154,6 +189,7 @@ public class GUI extends Application implements RoomChange, CombatChecker {
             process(text);
             inputField.clear();
             refreshUI();
+            handleGameEnd();
         }
     }
 
@@ -165,6 +201,7 @@ public class GUI extends Application implements RoomChange, CombatChecker {
             }
             if (command.getCommandWord().equals("look")) {
                 roomInspected = true;
+                refreshUI();
             }
             game.processCommand(command);
         } catch (Exception e) {
@@ -183,8 +220,14 @@ public class GUI extends Application implements RoomChange, CombatChecker {
 
     public void refreshUI() {
         Platform.runLater(() -> {
+            if (game.getGameEnd() != GameEnd.NONE) {
+                handleGameEnd();
+                return;
+            }
+
             updateInventory();
             updateInteractDropdown();
+
         });
     }
 
@@ -200,10 +243,13 @@ public class GUI extends Application implements RoomChange, CombatChecker {
         if (!roomInspected) {
             return;
         }
+
         Room room = game.getPlayer().getCurrentRoom();
 
         for (Item item : room.getItems()) {
-            interactDropdown.getItems().add(item.getName());
+            if (item.isVisible()) {
+                interactDropdown.getItems().add(item.getName());
+            }
         }
         if (room.getNPCs() != null) {
             for (NPC npc : room.getNPCs().values()) {
@@ -211,18 +257,13 @@ public class GUI extends Application implements RoomChange, CombatChecker {
             }
         }
         if (room.getStorages() != null) {
-            for (Storage storage : room.getStorages().values()) {
+            for (Storage<? extends Item> storage : room.getStorages().values()) {
                 interactDropdown.getItems().add(storage.getName());
                 if (storage.isOpen()) {
                     for (Item item : storage.getItems()) {
                         interactDropdown.getItems().add(item.getName());
                     }
                 }
-            }
-        }
-        for (Item item : game.getPlayer().getInventory()) {
-            if (!interactDropdown.getItems().contains(item.getName())) {
-                interactDropdown.getItems().add(item.getName());
             }
         }
     }
@@ -247,15 +288,105 @@ public class GUI extends Application implements RoomChange, CombatChecker {
 
         // Check for enemies in the room
         if (newRoom.hasEnemies() && !newRoom.equals(previousRoom)) {
-            Combat combatSession = new Combat(game.getPlayer(), newRoom.getOnlyEnemy(), previousRoom, guiGameIO);
-            combatSession.start();
+            currentCombat = new Combat(game.getPlayer(), newRoom.getOnlyEnemy(), previousRoom, guiGameIO, game);
+            currentCombat.setCombatListener(this);
+            guiInCombat = true;
+            if (guiInCombat == true) {
+                handleCombatGUI();
+                currentCombat.start();
+            }
+
         }
     }
 
     @Override
     public void onEnemyEncountered(Enemy enemy, Room previousRoom) {
-        Combat combatSession = new Combat(game.getPlayer(), enemy, previousRoom, guiGameIO);
-        combatSession.start();
+        currentCombat = new Combat(game.getPlayer(), enemy, previousRoom, guiGameIO, game);
+        currentCombat.setCombatListener(this);
+        guiInCombat = true;
+        if (guiInCombat == true) {
+            handleCombatGUI();
+            currentCombat.start();
+        }
+    }
+
+    @Override
+    public void onCombatEnded() {
+        Platform.runLater(() -> {
+            guiInCombat = false;
+            if (guiInCombat == false) {
+                currentCombat = null;
+                reEnableAllUI();
+                refreshUI();
+            }
+        });
+    }
+
+    public boolean isInCombat() {
+        return currentCombat != null && currentCombat.isInCombat();
+    }
+
+    private void handleCombatGUI() {
+
+        boolean combatActive = isInCombat();
+
+
+        if (combatActive) {
+            guiInCombat = true;
+            inputField.setEditable(false);
+            interactDropdown.setDisable(true);
+            choiceButtonBox.getChildren().clear();
+            interactButton.setDisable(true);
+            takeButton.setDisable(true);
+            dropButton.setDisable(true);
+            equipButton.setDisable(true);
+            northButton.setDisable(true);
+            southButton.setDisable(true);
+            eastButton.setDisable(true);
+            westButton.setDisable(true);
+            lookButton.setDisable(true);
+            inventoryList.setDisable(true);
+        }
+    }
+
+    private void handleGameEnd() {
+        if (game.getGameEnd() != GameEnd.NONE) {
+
+            inputField.setEditable(false);
+            interactDropdown.setDisable(true);
+            choiceButtonBox.getChildren().clear();
+            interactButton.setDisable(true);
+            takeButton.setDisable(true);
+            dropButton.setDisable(true);
+            equipButton.setDisable(true);
+            northButton.setDisable(true);
+            southButton.setDisable(true);
+            eastButton.setDisable(true);
+            westButton.setDisable(true);
+            lookButton.setDisable(true);
+            inventoryList.setDisable(true);
+            if (game.getGameEnd() == GameEnd.PLAYER_DIED || game.getGameEnd() == GameEnd.PLAYER_WON) {
+                saveButton.setDisable(true);
+                loadButton.setDisable(true);
+            }
+        }
+    }
+
+    private void reEnableAllUI() {
+        inputField.setEditable(true);
+        interactDropdown.setDisable(false);
+        interactButton.setDisable(false);
+        takeButton.setDisable(false);
+        dropButton.setDisable(false);
+        equipButton.setDisable(false);
+
+        northButton.setDisable(false);
+        southButton.setDisable(false);
+        eastButton.setDisable(false);
+        westButton.setDisable(false);
+        lookButton.setDisable(false);
+
+        inventoryList.setDisable(false);
     }
 
     public static void main(String[] args) {

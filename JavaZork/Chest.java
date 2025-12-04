@@ -2,7 +2,7 @@
 
 import java.io.Serializable;
 
-public class Chest extends Storage implements SharedUses, Serializable {
+public class Chest extends Storage<Item> implements SharedUses, Serializable {
     private boolean locked;
     private String chestColour;
 
