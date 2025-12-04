@@ -328,7 +328,7 @@ public class OlympicTrials {
         hera.addStorage(endPithos.getName(), endPithos);
 
         // PLAYER
-        player = new Player("Sigma", cloudstep, 200, 2);
+        player = new Player("Ciller", cloudstep, 200, 2);
 
     }
     public Player getPlayer() {
