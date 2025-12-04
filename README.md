@@ -21,22 +21,7 @@ Save Load buttons
 Fully functioning npc system
 
 
-Project Structure
-src/
- ├── game/
- │    ├── Game.java        # Main game loop
- │    ├── Player.java      # Player logic
- │    ├── Room.java        # Room and entity management
- │    ├── Item.java        # Base item class
- │    ├── Key.java         # Key subclass
- │    ├── NPC.java         # NPC interactions
- │    ├── Enemy.java       # Enemy logic
- │    ├── Storage.java     # Storage containers
- │    ├── SharedUses.java  # Interface for interactable objects
- │    └── ...
- ├── gui/
- │    ├── GUI.java         # Optional graphical interface
- │    └── ...
+
 
 
 Requirements
